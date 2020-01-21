@@ -13,11 +13,12 @@ scripts:
 * forciemat.nb the Mathematica file I gave to CIEMAT
 * Htrap.nb the solution of the emittance integrals along the variable bend for the trapezium and the resulted emittance reduction factor
 * trapTME.nb are the analytical solutions for the whole TME cell
+* tmeshape.m plots the variation of the field/bending radius along the dipole, analytical and ciemat
 ***
 **Alternative CLIC DR design using longitudinally variable bends and high field wigglers**\
 scripts:
 * trap_ciemat_final.madx is the MAD-X file where the new lattice, using the CIEMAT designed dipole and SC high filed wigglers, is defined
-* Tracking-DAphi.madx to run and check DA 
+* Tracking-DAphi.madx to run and check DA after ploting using DA.m
 ***
 **Useful links**\
 https://journals.aps.org/prab/pdf/10.1103/PhysRevAccelBeams.22.091601 \
