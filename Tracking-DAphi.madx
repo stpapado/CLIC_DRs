@@ -1,0 +1,133 @@
+beam, particle=positron, energy=2.86,bunched,npart=4.07e+09,
+      kbunch=312, EX = 1.125E-8, EY = 2.680E-10, ET = 4.56605E-05,
+      SIGT=0.0091321, SIGE=0.005,radiate=TRUE;
+
+call,file="ring-natural_2ghz_new.seq";
+use,sequence=ring;
+
+NsigmaDynamicAperture:=Nmindyanmic;
+maxradius = 120;    !20
+steps=120;        !80
+increment=maxradius/steps;
+phi=%%phi;
+!phimax=90;
+deltaphi=10;
+nTurnsToTrack=1024;
+Ex=beam->EX;
+Ey=beam->EY;
+value,Ex,Ey;
+dp=-0.0005;!0.0;
+
+////////////////////////////
+//   MACRO DEFINITIONS   //
+//////////////////////////
+
+trackin(xx,yy): macro=
+{
+  ptc_start, x=xx, px=0, y=yy, py=0;
+  value, xx,yy;
+}
+
+ReadSummTable(ll):macro=
+{
+  turns=table(tracksumm,TURN,ll);
+  x0=table(tracksumm,X,ll);
+  y0=table(tracksumm,Y,ll);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Determine values of beta functions at start of sequence
+    
+TWISS;
+betxstart=table(twiss,betx,1);
+betystart=table(twiss,bety,1);
+Sgmx = sqrt(Ex*betxstart);
+Sgmy = sqrt(Ey*betystart);
+Q1=table(summ,Q1);
+Q2=table(summ,Q2);
+show Sgmx, Sgmy;
+show,Q1,Q2;
+
+assign, echo="Params.dat";
+show Sgmx, Sgmy, Q1, Q2, dp;
+assign,echo=terminal;
+
+// Starting values
+
+PTC_CREATE_UNIVERSE;
+ptc_create_layout,model=2,method=6,nst=2, exact=true;
+PTC_SETSWITCH, debuglevel=0, fringe=true,exact_mis=true;
+PTC_ALIGN;
+
+!Sgmx = sqrt(Ex*betxstart);       
+!Sgmy = sqrt(Ey*betystart);
+Np=0;
+Energy=beam->energy;       
+option, -info;   
+!phi=0;
+x0:=radius*Sgmx*cos(phi/180*pi);
+y0:=radius*Sgmy*sin(phi/180*pi);   
+
+!while (phi<=phimax)
+!{
+  radius=increment;
+  while (radius <= maxradius)
+  {
+    exec, trackin(x0,y0);
+    Np=Np+1;
+    radius = radius + increment;
+  };
+!  phi=phi+deltaphi;
+!};
+
+option, info;
+
+ptc_track,icase=5,deltap=dp,closed_orbit,dump,ELEMENT_BY_ELEMENT,turns=nTurnsToTrack,NORM_NO=8,maxaper=1,1,1,1,1,1;
+PTC_TRACK_END;
+
+write, table=TRACKSUMM, file="Tracksumm.txt";
+    
+
+// Determine dynamic aperture
+Nincrement=9999;
+l=Np;
+n=0;           
+create, table=DAlimit, column=X0,Nsigmax,Y0,Nsigmay,turns,Energy,dp,seed;
+Nsigmax:=X0/Sgmx;
+Nsigmay:=Y0/Sgmy;
+
+while (l < 2*Np)
+{
+  l=l+1;
+  exec, ReadSummTable($l);
+  value, x0,y0;
+
+  r=0;
+  while (turns == nTurnsToTrack)
+  {
+    r=r+1;
+    l=l+1;
+    exec, ReadSummTable($l);             
+  };
+
+  if (r<Nincrement){Nincrement=r;};    ! Determine smallest stable amplitude -> dynamic aperture
+
+  l=l-1-Np;   
+  ReadSummTable($l);
+  turns=nTurnsToTrack;
+  fill, table=DAlimit;
+  value, turns;
+               
+  n=n+1;               
+  l=Np+n*(steps);
+}
+
+write, table=DAlimit, file="DAlimit.txt";
+Nmindyanmic=Nincrement*increment;            ! Minimum dynamic aperture
+value,Nmindyanmic;
+PTC_END;
+
+plot, Title="Dynamic Aperture", table=DAlimit, NOVERSION=true, haxis=Nsigmax, vaxis=Nsigmay, colour=100;
+
+RETURN;

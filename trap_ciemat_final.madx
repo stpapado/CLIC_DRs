@@ -1,0 +1,751 @@
+PTCtwiss(nnn): macro = {
+ptc_create_universe;
+	ptc_create_layout,model=2,method=6,nst=2;
+	PTC_SETSWITCH, fringe=false, debuglevel=1, nocavity=false,radiation=true;
+	PTC_ALIGN;
+	SELECT, flag=ptc_twiss,column=name,s,beta11,alfa11,mu1,beta22,alfa22,mu2,disp1,disp2,disp3,disp4;
+	ptc_twiss,closed_orbit=true,no=6,icase=5,file="dr_ptc_twiss_nnn.tfs";
+ptc_end;
+}
+
+MISALIGNMENTS(RING,k): macro = {
+	select,flag=error,class=quadrupole;
+	ealign,dphi=k*tgauss(2.5);
+}
+
+filename(nn): macro = {
+	twiss,chrom,sequence=RING,file=twiss_nn.tfs;
+	SAVE,sequence=RING,file=seq_nn.seq;
+}
+
+callfilename(nnn): macro = {
+	call,file="seq_nnn.seq";
+	
+}
+
+renamefiles(nnn): macro = {
+	system, "mv outtt out_nnn.dat";
+	system, "cp emit.dat emit_nnn.dat";
+	system, "cp Bwlw.dat Bwlw_nnn.dat";
+	system, "cp RingSummParams.dat RingSummParams_nnn.dat";
+}
+
+renamefile(filename,qqx,qqy):macro={
+  system,"mv filename.tfs filename-qqx-qqy.tfs";
+}
+
+LAYOUT(name): macro = {
+
+        ptc_create_universe;
+        ptc_create_layout,model=2,method=6,nst=1;
+        PTC_SETSWITCH, fringe=false, debuglevel=0; !, nocavity=false,radiation=false;
+
+        ptc_printframes, file="name.C", format=rootmacro;!this prints my visualisation with ROOT
+
+        ptc_end;
+};
+
+MATCHTME(TME,qx,qy,KQF1,KQF2): macro = {
+	MATCH,SEQUENCE=TME; 
+	GLOBAL,q1=qx,q2=qy;
+	VARY,NAME=KQF1,STEP=1E-6;
+	VARY,NAME=KQF2,STEP=1E-6;
+	!LMDIF,CALLS=500,TOLERANCE=1e-25;
+	JACOBIAN,CALLS=30,TOLERANCE=1.e-25;
+ENDMATCH;
+};
+
+MATCHFODOw(FODOW,qx,qy,KQFw,KQDw): macro = {
+	MATCH,SEQUENCE=FODOW; 
+	GLOBAL,q1=qx,q2=qy;
+	VARY,NAME=KQFw,STEP=1E-6;
+	VARY,NAME=KQDw,STEP=1E-6;
+	!LMDIF,CALLS=500,TOLERANCE=1e-21;
+	JACOBIAN,CALLS=30,TOLERANCE=1.e-25;
+ENDMATCH;
+};
+
+MATCHLAG(RING,LGRF1): macro = {
+match,sequence=RING;
+   VARY,NAME=LGRF1,STEP=1.0e-6;
+   constraint, RANGE=#E,T=0;
+   weight,T=10000;
+   jacobian, calls= 20, tolerance=1.E-22, bisec=3;
+   LMDIF, CALLS=1000, TOLERANCE=1.E-22;
+endmatch;
+};
+
+MATCHChromMADX(RING,KS2X2,KS2Y1): macro = {
+match,sequence=RING;
+	GLOBAL,DQ1=0,DQ2=0;
+	VARY,NAME=KS2X2,STEP=1E-6;
+	VARY,NAME=KS2Y1,STEP=1E-6;
+	LMDIF,CALLS=500,TOLERANCE=1e-21;
+	JACOBIAN,CALLS=30,TOLERANCE=1.e-21;
+ENDMATCH;
+}
+
+
+Bw=3.5;
+
+
+!n=0;
+!mm=0;
+lw=0.049;
+
+Ltot=2;
+Nper=Ltot/lw-1;
+show,Nper;
+
+WigglerSinusoidal(Nper,Bw,lw,En): macro = {
+Ldrift=0.236788163577E-2;
+!Ldrift=lw/8/2;
+Lpole=lw/2-2*Ldrift;
+Bs=Bw*lw/(PI*Lpole);
+angwig=Lpole*0.2998*Bs/En;
+
+WIGPOLEPOS: SBEND, L=Lpole, ANGLE:=angwig, E1= 
+angwig/2, E2=angwig/2;
+WIGPOLENEG: SBEND, L=Lpole, ANGLE:=-angwig, E1= 
+-angwig/2, E2=-angwig/2;
+WIGHALFPOLEPOS: SBEND, L=Lpole, ANGLE:=angwig*0.5, E1= 
+angwig/4, E2=angwig/4;
+WIGDRIFT: DRIFT, L=Ldrift;
+
+
+WigglerSinusoidal: LINE=(WIGDRIFT, WIGHALFPOLEPOS, 
+WIGDRIFT, Nper*(WIGDRIFT, WIGPOLENEG, WIGDRIFT, WIGDRIFT, WIGPOLEPOS, 
+WIGDRIFT), WIGDRIFT, WIGPOLENEG, WIGDRIFT, WIGDRIFT, 
+WIGHALFPOLEPOS, WIGDRIFT);
+}
+
+
+En=2.86;
+
+!ang=2*pi/(Nd);                ! Bending angle of the dipole
+!rr=0.63;
+!el=0.1;   
+
+
+!dispersion sup.
+WD0: DRIFT, L=2.15;
+WD01: DRIFT, L=2.15/2;
+WD02: DRIFT, L=2.15/2;
+DM3: DRIFT, L=0.35;
+DM4: DRIFT, L=0.35;
+SM1: DRIFT, L=0.15;
+D01: DRIFT, L=0.2;
+D02: DRIFT, L=0.2;
+D03: DRIFT, L=0.2;
+MH1: MARKER;
+MH2: MARKER;
+MH3: MARKER;
+MRF: MARKER;
+! Generated drifts:
+Minj: MARKER;
+Mextr: MARKER;
+
+KQF1DS=-4.446544770327;
+KQF2DS=7.694366543502;
+KQFW0=2;
+KQDW0=-3;
+KQM1=8;
+KQM31=8;
+KQM41=-8;
+KQF1DS2=-4.446544770327;
+KQF2DS2=7.694366543502;
+KQFW02=2;
+KQDW02=-3;
+KQM12=8;
+KQM312=8;
+KQM412=-8;
+
+GQF1DS: QUADRUPOLE, L=0.2, K1:=KQF1DS;
+GQF2DS: QUADRUPOLE, L=0.2, K1:=KQF2DS;
+QFW0: QUADRUPOLE, L=0.1, K1:=KQFW0;
+QDW0: QUADRUPOLE, L=0.1, K1:=KQDW0;
+QM1: QUADRUPOLE, L=0.2, K1:=KQM1;
+QM31: QUADRUPOLE, L=0.305, K1:=KQM31;
+QM41: QUADRUPOLE, L=0.305, K1:=KQM41;
+
+
+
+GQF1DS2: QUADRUPOLE, L=0.2, K1:=KQF1DS2;
+GQF2DS2: QUADRUPOLE, L=0.2, K1:=KQF2DS2;
+QFW02: QUADRUPOLE, L=0.1, K1:=KQFW02;
+QDW02: QUADRUPOLE, L=0.1, K1:=KQDW02;
+QM12: QUADRUPOLE, L=0.2, K1:=KQM12;
+QM312: QUADRUPOLE, L=0.3, K1:=KQM312;
+QM412: QUADRUPOLE, L=0.3, K1:=KQM412;
+
+
+
+DISP22: LINE = (MH3, QFW1, WD01, MRF, WD02, QDW02, QDW02, WD0, QFW02, QFW02,  
+D03, QM412, D02, QM312, D01, MH2, GTMEL, GTMER, DM3, QM12, DM4, GQF2DS2, D3, GQF1DS2, D2,SM1, D1, GTMEL,MH1);
+
+DISP11: LINE = (MH1, GTMER, D1, SM1, D2, GQF1DS, D3, GQF2DS, DM4, QM1, DM3, 
+GTMEL, GTMER, MH2, D01, QM31, D02, QM41, D03,QFW0, QFW0, WD0, QDW0, QDW0, WD0, QFW1, MH3);
+
+
+q1fodo=0.253;
+q2fodo=0.106;
+!q1fodo=0.2765; !for a good tune point
+!q2fodo=0.1388;
+
+LQ1w=0.1;
+LQ2w=0.1;
+KQFw =1.55261226 ;
+KQDw =-1.301643467 ;
+Lwd1=0.6;
+Lwd2=0.2;
+QFw1: QUADRUPOLE, L=LQ1w, K1 := KQFw;
+QDw1: QUADRUPOLE, L=LQ2w, K1 := KQDw;
+
+WD1: DRIFT,L = Lwd1;
+WD2: DRIFT,L = Lwd2;
+
+FODOw: LINE=(QFW1,WD1,WigglerSinusoidal,WD2,QDW1,QDW1,WD1,WigglerSinusoidal,WD2,QFW1);
+STRAIGHT: LINE = (10*FODOw);
+
+RING: LINE = (STRAIGHT, DISP22,ARC,DISP11,STRAIGHT,DISP22,ARC,DISP11);
+
+
+CREATE,TABLE=TAB,COLUMN=Bw,VRF,dq1,dq2,ALFA,U0,i, diff1, diff2, diff3, diff4, ex0n, ey0n, sp0, ss0, exn, eyn, spp, sss, et, IBSx, IBSy, IBSl,taux,tauy,taul,qs;
+CREATE,TABLE=TABibs,COLUMN=Bw,VRF,dq1,dq2,ALFA,U0,i, diff1, diff2, diff3, diff4, ex0n, ey0n, sp0, ss0, exn, eyn, spp, sss, et, IBSx, IBSy, IBSl,kmis;
+
+			 
+!value, el;
+!value, 2.86/((Lo*r2/r1)/(th/Nst))/0.2998,2.86/(Lo*Nst/(rr*th))/0.29979258, (2.86/r1/0.299792458)*rr,r2,((Lo*r2/r1)/(th/Nst));
+!value, ang, (Lo/r1+Nst*th/Nst) ;
+!value,2*(Lo+(th/Nst)*r2+(Lo/r1)*(6*r2-21*r)-dif);
+!stop;
+
+En=2.86;
+
+Nd=90;
+ang=(2*pi/Nd)/2; !half bending angle
+
+thelength0=0.005;
+thelength1=0.013;
+thelength2=0.023;
+thelength3=0.026;
+thelength4=0.031;
+thelength5=0.037;
+thelength6=0.043;
+thelength7=0.053;
+thelength8=0.059;
+
+ANGLE0=0.0012161;
+ANGLE1=0.003;
+ANGLE2=0.0044;
+ANGLE3=0.0044;
+ANGLE4=0.0045;
+ANGLE5=0.0045;
+ANGLE6=0.0045;
+ANGLE7=0.0046;
+ANGLE8=0.00379;
+
+
+!thek=0;
+thek=-1.1;
+
+DIP0           : sbend, l = thelength0, angle = ANGLE0, k1 = thek;! e1 = 0.0013031736915, e2 = 0.0013031736915;
+DIP1           : sbend, l = thelength1, angle = ANGLE1, k1 = thek;! e1 = 0.0013331736915, e2 = 0.0013331736915;
+DIP2           : sbend, l = thelength2, angle = ANGLE2, k1 = thek;! e1 = 0.002116706448, e2 = 0.002116706448;
+DIP3           : sbend, l = thelength3, angle = ANGLE3, k1 = thek;! e1 = 0.002116706448, e2 = 0.002116706448;
+DIP4           : sbend, l = thelength4, angle = ANGLE4, k1 = thek;! e1 = 0.002116706448, e2 = 0.002116706448;
+DIP5           : sbend, l = thelength5, angle = ANGLE5, k1 = thek;! e1 = 0.002116706448, e2 = 0.002116706448;
+DIP6           : sbend, l = thelength6, angle = ANGLE6, k1 = thek;! e1 = 0.002116706448, e2 = 0.002116706448;
+DIP7           : sbend, l = thelength7, angle = ANGLE7, k1 = thek;! e1 = 0.002116706448, e2 = 0.002116706448;
+DIP8l          : sbend, l = thelength8, angle = ANGLE8, k1 = thek;! e1 = 0.002116706448, e2 = 0.002116706448, FINT=0.7, HGAP=0.015;
+DIP8r          : sbend, l = thelength8, angle = ANGLE8, k1 = thek;! e1 = 0.002116706448, e2 = 0.002116706448, FINT=0.7, HGAP=0.015;
+
+th=ang-ANGLE0;
+value,ANGLE0,ANGLE1,ANGLE2,ANGLE3,ANGLE4,ANGLE5,ANGLE6,ANGLE7,ANGLE8;
+value,2*(thelength0+(thelength1+thelength2+thelength3+thelength4+thelength5+thelength6+thelength7+thelength8));
+value, th-(ANGLE1+ANGLE2+ANGLE3+ANGLE4+ANGLE5+ANGLE6+ANGLE7+ANGLE8);
+value,thelength0/ANGLE0,(thelength8)/ANGLE8;
+!stop;
+
+gtmel           : line=(dip8l, dip7, dip6, dip5, dip4, dip3, dip2, dip1, dip0);
+gtmer           : line=(dip0, dip1, dip2, dip3, dip4, dip5, dip6, dip7, dip8r);
+
+GTMELDS= GTMEL;
+GTMERDS= GTMER;   
+
+lq=0.25;!quadrupoles length
+ls=0.15;!sextupole length
+ss1=0.485;ss2=0.28;ss3=0.255;	!drifts in matlab ss1=0.43;ss2=0.28;ss3=0.255;
+dr1=(ss1-lq/2-ls)/2; ! the /2 is because we assume that dr1=dr2
+dr2=(ss1-lq/2-ls)/2;
+dr3=ss2-lq;
+dr4=ss3-lq/2-ls/2;
+!value, dr1,dr2,dr3,dr4;
+value, dr1+dr2+dr3+dr4+2*lq+1.5*ls; !this is the total length of the half cell without the dipole and it should be equal to ss1+ss2+ss3
+value, ss1+ss2+ss3;
+D1: DRIFT, L=dr1;
+D2: DRIFT, L=dr2;	
+D3: DRIFT, L=dr3;
+D4: DRIFT, L=dr4;
+!stop;
+ 
+GQF1: QUADRUPOLE, L:=LQ, K1:=KQF1;
+GQF2: QUADRUPOLE, L:=LQ, K1:=KQF2;
+
+S2X2: SEXTUPOLE, L:=ls, K2:=KS2X2;
+S2Y1: SEXTUPOLE, L:=ls/2, K2:=KS2Y1;
+
+KS2X2=100;
+KS2Y1=-100;    
+         
+TME: LINE = (GTMER, D1,S2X2, D2, GQF1, D3, GQF2, D4, S2Y1, S2Y1, D4, GQF2, D3, GQF1, D2, S2X2, D1, GTMEL);
+
+!ARC: LINE = (47*TME); !for the 100dipoles.
+ARC: LINE = (42*TME); !for the 90dipoles.
+
+!***RF***********
+!VRF=5.4; !for the 100dipoles.
+!VRF=6.16; !last one
+VRF=6.5;
+!VRF=6;
+!VRF=5.8; !for the 90dipoles.
+!LGRF:=3.36086957E-01;
+LGRF:=5E-01;
+HARMON=2493;
+
+RF: RFCAVITY, L=0.1E-8, VOLT=VRF, LAG:=LGRF,HARMON=HARMON;
+
+beam, particle=positron, energy=En;
+
+SELECT,FLAG=TWISS,RANGE=#S/#E, 
+       COLUMN=NAME, KEYWORD, S, L, ANGLE, K1L, BETX, ALFX, MUX, BETY, ALFY, MUY, DX, DPX, DY, DPY;
+
+!-0.8 and 0.67
+!KQF1= -3.8; 
+!KQF2= 7.1;
+
+!~~~f1pf2n~~~
+!KQF1= 12.16; 
+!KQF2= -7.23;
+!qx= 0.54;          !mux
+!qy= 0.11;           !muy 
+!~~~f1nf2p~~~
+!KQF1= 235; 
+!KQF2= -167;
+!qx= 0.515;          !mux
+!qy= 0.11;           !muy 
+
+KQF1= 12.2; 
+KQF2= -7.4;
+qx= 0.51;          !mux
+qy= 0.11;           !muy 
+
+!stop;
+!ins(mx,m):macro={
+!save,sequence=RING,file="trapmx_DR.newlattice_2GHz.seq";
+!}
+
+!m=0;
+!while(m<16)
+!{
+
+!Bw:=2.5+m/10;
+
+!value,Bw;
+
+
+use period=TME;
+exec, MATCHTME(TME,qx,qy,KQF1,KQF2);
+toltme=tar;
+if (abs(toltme)>1E-10)
+{	
+	stop;
+}
+
+savebeta,label=betatme,place=#e,sequence=TME;
+twiss,sequence=TME;
+!PLOT, NOTITLE=TRUE, COLOUR=100, HAXIS=S,VAXIS1=BETX,BETY,VAXIS2=DX,interpolate=true;
+PLOT, NOTITLE=TRUE, COLOUR=100, HAXIS=S, HMIN=0, HMAX=2.62, VAXIS1=BETX,BETY,VAXIS2=DX,interpolate=true;
+!stop;
+
+use period=arc;
+twiss,sequence=ARC; 
+file=arc.dat;
+PLOT, file=arc, NOTITLE=TRUE, COLOUR=100, HAXIS=S,VAXIS1=BETX,BETY,VAXIS2=DX,interpolate=true;
+
+!**********fodo for straight*************
+
+exec,WigglerSinusoidal($Nper,Bw,lw,En);
+
+
+use period=FODOw;
+exec, MATCHFODOw(FODOw,q1fodo,q2fodo,KQFw,KQDw);
+twiss,file=mpla.dat;
+
+PLOT, NOTITLE=TRUE, COLOUR=100, HAXIS=S,VAXIS1=BETX,BETY,VAXIS2=DX,DY,interpolate=true;
+fodolength=table(summ,length);
+value,DY;
+!stop;
+exec,LAYOUT(FODO);
+
+if (tolfodo < E-10)
+{
+show,tolfodo; 
+}
+
+savebeta,label=betafodow,place=#e,sequence=FODOw;
+
+twiss,sequence=FODOw; !,file=fodowig.dat;
+
+use period=DISP11;
+use period=DISP22;
+use period=ARC;
+use period=STRAIGHT;
+use period=RING;
+
+MATCH,SEQUENCE=DISP11,beta0=betatme; 
+	CONSTRAINT,range=#e,dx=betafodow->dx,dpx=(betafodow->dpx);
+	CONSTRAINT,range=#e,betx=betafodow->betx,bety=betafodow->bety,alfx=(betafodow->alfx),alfy=(betafodow->alfy);
+	VARY,NAME=KQF1DS,STEP=1E-6; !,lower=0;
+	VARY,NAME=KQF2DS,STEP=1E-6; !,lower=0;
+	VARY,NAME=KQM1,STEP=1E-6; !,lower=0;
+	VARY,NAME=KQM31,STEP=1E-6;	!,upper=0;
+	VARY,NAME=KQM41,STEP=1E-6;	!,upper=0;
+	VARY,NAME=KQFW0,STEP=1E-6; ! ,upper=0;
+	VARY,NAME=KQDW0,STEP=1E-6; ! ,upper=0;
+	!LMDIF,CALLS=500,TOLERANCE=1e-15;
+	JACOBIAN,CALLS=30,TOLERANCE=1.e-20;
+	JACOBIAN,CALLS=30,TOLERANCE=1.e-20;
+ENDMATCH;
+
+toldisp11=tar;
+twiss,sequence=DISP11,beta0=betatme; !,file=disp11.dat; 
+PLOT, NOTITLE=TRUE, COLOUR=100, HAXIS=S, HMIN=0, HMAX=8.6,VAXIS1=BETX,BETY,VAXIS2=DX,interpolate=true;
+
+exec,LAYOUT(DISP1);
+
+KQF1DS2=KQF1DS;
+KQF2DS2=KQF2DS;
+KQM12=KQM1;
+KQM312=KQM31;
+KQM412=KQM41;
+KQFW02=KQFW0;
+KQDW02=KQDW0;
+
+MATCH,SEQUENCE=DISP22,beta0=betafodow; 
+	CONSTRAINT,range=#e,dx=betatme->dx,dpx=(betatme->dpx);
+	CONSTRAINT,range=#e,betx=betatme->betx,bety=betatme->bety,alfx=(betatme->alfx),alfy=(betatme->alfy);
+	VARY,NAME=KQF1DS2,STEP=1E-6; !,lower=0;
+	VARY,NAME=KQF2DS2,STEP=1E-6; !,lower=0;
+	VARY,NAME=KQM12,STEP=1E-6; !,lower=0;
+	VARY,NAME=KQM312,STEP=1E-6;	!,upper=0;
+	VARY,NAME=KQM412,STEP=1E-6;	!,upper=0;
+	VARY,NAME=KQFW02,STEP=1E-6; ! ,upper=0;
+	VARY,NAME=KQDW02,STEP=1E-6; ! ,upper=0;
+	!LMDIF,CALLS=500,TOLERANCE=1e-15;
+	JACOBIAN,CALLS=30,TOLERANCE=1.e-20;
+	JACOBIAN,CALLS=30,TOLERANCE=1.e-20;
+ENDMATCH;
+toldisp22=tar;
+twiss,sequence=DISP22,beta0=betafodow; !,file=disp22.dat; 
+PLOT, NOTITLE=TRUE, COLOUR=100, HAXIS=S,VAXIS1=BETX,BETY,VAXIS2=DX,interpolate=true;
+
+twiss,sequence=RING,file=ring_withchrom.dat; !,beta0=betatme; !,file=pdr_dispsup.dat; 	
+!//PLOT, NOTITLE=TRUE, COLOUR=100, HAXIS=S,VAXIS1=BETX,BETY,VAXIS2=DX,interpolate=true;
+
+save,sequence=RING,file="ring-natural_2GHz.seq";
+
+
+call,file="ring-natural_2GHz.seq";
+use,sequence=ring;
+
+!exec, MATCHChromMADX(RING,KS2X2,KS2Y1);
+
+!twiss,chrom,deltap=0.0;
+
+!call,file="Chromaticitycorrect.madx";
+!twiss,chrom;
+!value, anhxx, anhxy, anhyx, anhyy;
+!stop;
+
+!save,sequence=RING,file="ring-chromcor-noRF.seq";
+use,sequence=RING;
+
+
+
+seqedit,sequence=RING;
+	replace,element=MRF[1],by=RF;
+endedit;
+
+use,sequence=ring;
+exec,LAYOUT(RING);
+
+exec, MATCHLAG(RING,LGRF);
+twiss,chrom,sequence=RING,file=twiss_2GHz.dr.nody.dat;
+PLOT, NOTITLE=TRUE, COLOUR=100, HAXIS=S,  VAXIS1=BETX,BETY,VAXIS2=DX; !,interpolate=true;
+
+!HMIN=168.7, HMAX=185.6,
+
+save,sequence=RING,file="trap_ciemat_final_2GHz.seq";
+use,sequence=RING;
+
+exec,LAYOUT(RING);
+!stop;
+
+!Nb=5.7e+09; 
+Nb=4.07e+09;
+beam, particle=positron, energy=En,bunched,npart=Nb,
+      kbunch=312, EX = 1.125E-8, EY = 2.680E-10, ET = 4.56605E-05,
+      SIGT=0.0091321, SIGE=0.005,radiate=TRUE;
+!twiss;
+
+
+!ibs,file=ibs.tfs;
+
+
+!value,KQF1,KQF2,KQFw,KQDw,KQF1DS,KQF2DS,KQM1,KQM31,KQM41,KQFW0,KQDW0,KQF1DS2,KQF2DS2,KQM12,KQM312,KQM412,KQFW02,KQDW02,KS2X2,KS2Y1;
+
+!exec,PTCtwiss($n);
+!emit;
+!DQ1=TABLE(summ,DQ1);
+!DQ2=TABLE(summ,DQ2);
+!ALFA=TABLE(summ,ALFA);
+!EX=beam->EX;
+!em=ex*5597/100;
+!value, em,dq1,dq2,alfa,KQF1,KQF2;
+!stop;
+
+!En=2.86;
+
+!beam, particle=positron, energy=En,bunched, npart=Nb,
+ !    kbunch=1, EX = 1.125E-8, EY = 2.680E-10, ET = 4.56605E-05,
+  
+!    SIGT=0.0091321, SIGE=0.005;
+
+!use, sequence=ring;
+twiss;
+PLOT, NOTITLE=TRUE, COLOUR=100, HAXIS=S, HMIN=171.1, HMAX=185.75,VAXIS1=BETX,BETY,VAXIS2=DX; !,interpolate=true;
+
+!stop;
+!kmis=0.6e-04; !for the 90dipoles
+!kmis changes when you use the chromaticity. (it should be incresed ?)
+kmis=0.423e-04; !for the 90dipoles and no chroma
+!kmis=0.1e-05; !for the 90dipoles and no chroma
+!kmis=0.54e-04; !with chrom
+
+!kmis=0;
+exec, MISALIGNMENTS(RING,kmis);
+twiss,chrom,centre,sequence=RING;
+
+!use, sequence=ring;
+!stop;
+I1=table(summ,synch_1);
+I2=table(summ,synch_2);
+I3=table(summ,synch_3);
+I4=table(summ,synch_4);
+I5=table(summ,synch_5);
+RCIR=table(summ,length);
+ap=table(summ,alfa);
+Cgg=0.0000884628;
+
+!U0=Cgg/(2*Pi)*(En)^4*I2;	![GeV/turn]
+
+!taux=2*En*(RCIR/clight)/U0;
+!tauy=2*En*(RCIR/clight)/U0;
+!taus=2*En*(RCIR/clight)/U0/2;
+
+h=HARMON;
+gt=table(summ,gammatr);
+gamma=beam->gamma;
+betar=beam->beta;
+
+etap=abs(1/gt^2-1/gamma^2);
+Qs=sqrt(h*etap/2/pi/betar^2/En*(VRF/1000)*cos(asin(U0/(VRF/1000))));
+
+
+! Here I put radiation on in order to calculate the equilibrium beam properties
+beam, npart=Nb, radiate; 
+
+twiss;
+
+emit;
+
+twiss,centre,chrom,file=trap_twiss_2GHz.dr.emit.tfs;
+
+show,I1,I2,I3,I4,I5,U0,En,Cgg,taux,taus,Qs;
+
+
+!twiss,file=twiss_emit_2GHz.tfs; ! In this file you get the equilibrium beam properties in the header
+
+!! i want to start the IBS calculations from the equilibrium beam values and for this I redefine the beam as this will be the input to the ibs module.
+!! The emit calculates the correct equilibrium values here. However if you put an ibs command after this, the longitudinal values that the ibs gets as input are wrong!
+!! I am not sure how this works for a 3rd harmonic cavity.. Maybe it is better to calculate by hand or varify that it gives the correct values. 
+
+gg=beam->gamma;
+En=beam->energy;
+Cgg=0.0000884628;
+cc=299792458;
+Jx0=1.03158024;
+Jy0=1.00056875;
+Js0=1.97019933;
+
+!Vrf=5.1e-3;
+hh=HARMON;
+
+U0=Cgg/(2*pi)*En^4*I2;
+
+taux=2*En*RCIR/(Jx0*U0*cc);
+tauy=2*En*RCIR/(Jy0*U0*cc);
+taul=2*En*RCIR/(Js0*U0*cc)/2;
+
+RCIR=TABLE(summ,LENGTH);
+Cq=3.8319*10^(-13);
+!Bw=2.5;
+!bxw=10;
+k=0.2998;
+!elw=0.05;
+!er=4.34837;
+!BA=En/(0.2998*9.23099);
+!Jx0= 1.03166127;
+!Fw=(Lw*Bw^2)/(4*pi*BA*En/0.2998);
+!Jxa=Jx0*(1+Fw)-Fw;
+!Nd=100;
+!theta=2*pi/Nd;
+!Ld=0.58;
+!Lw=2;
+!ex0a=Cq*(gg^3)*(I5/(I2-I4));
+!ex0b=(Cq*gg^3)/(12*(Jxa+Fw))*((er*theta^3)/sqrt(15)+(Fw*Bw^3*lw^2*bxw)/(16*(En/0.2998)^3));
+!ex0c=(Cq*gg^3*(1024*sqrt(15)*En^5*pi^5*er+15*Bw^5*Ld*Lw*Nd^4*bxw*elw^2*k^5))/(2880*En^3*Nd^3*(Bw^2*k^5*Ld*Lw*Nd+8*En^2*pi^2));
+!ex0=((Cq*(1024*sqrt(15)*En^5*pi^5*er+15*Bw^5*k^5*Ld*Lw*Nd^4*bxw*elw^2))/(2880*En^3*Nd^3*(Bw^2*k^2*Ld*Lw*Nd+8*En^2*pi^2)))/gg;
+
+DQ1=TABLE(summ,DQ1);
+DQ2=TABLE(summ,DQ2);
+ALFA=TABLE(summ,ALFA);
+ap=Alfa;
+!LENGTH=TABLE(summ,LENGTH);
+!VOLT=beam->VOLT;
+!SIGE=beam->SIGE;
+!SIGT=beam->SIGT;
+!U0=beam->U0;
+!EX=beam->EX;
+!ET=beam->ET;
+
+ex0=beam->ex;
+sp0=beam->SIGE;
+ss0=sp0*RCIR*((ap*En)/(2*pi*hh*((Vrf/1000)^2-U0^2)^(1/2)))^(1/2);
+ey0=5.9e-13;
+
+!!!br=(1-gamma^2)^0.5;
+
+show, ex0, ex0a, ex0b, ex0c, ey0, sp0, ss0; 
+
+!stop;
+show, ex0, ey0, gg, I2, U0, taux, tauy, taul;
+
+exi=ex0;
+eyi=ey0;
+spi=sp0;
+ssi=ss0;
+nn=5;
+tt=taux/nn;
+
+
+i=1;
+diff1=1;
+
+!! I set the RF voltage to zero, otherwise the energy spread and bunch length used by the ibs comment are wrong! 
+!! This is an internal bug of madx! In my sequence the RF voltage is named V0. 
+V0=0;
+
+
+create,table=ibsiteration,column=i,time,exx,eyy,spp,sss,ex0,ey0,sp0,ss0,Nb;
+create,table=ibssteadystate,column=i,exn,eyn,spp,sss,ex0n,ey0n,sp0,ss0,Nb;
+option,-info;
+!while (diff1>1e-6) 
+!{
+    delete,table=twiss,table=summ;  
+    !! I put the radiation off here as in order to have it on you need the RF on and then you get wrong input in the ibs module. 
+    resbeam;  
+    beam, particle=positron, energy=En,bunched,npart=Nb,kbunch=1;
+    beam->ex=exi;
+    beam->ey=eyi;
+    beam->sige=spi;
+    beam->sigt=ssi;
+    beam->et=ssi*spi;
+
+    twiss;
+!show, exi,eyi,beam;
+    ibs,file=ibs_2GHz.tfs;
+!stop;
+
+    Tx=1/ibs.tx/2;
+    Ty=1/ibs.ty/2;
+    Tl=1/ibs.tl/2;
+
+    show,beam;
+    show, exi, eyi, spi, ssi;
+!stop;
+    !! This is the emittance growth due to the IBS growth rates
+
+    exx=(-ex0+exp(2*tt*(Tx-1/taux))*(ex0+exi*(-1+Tx*taux)))/(-1+Tx*taux);
+    eyy=(-ey0+exp(2*tt*(Ty-1/tauy))*(ey0+eyi*(-1+Ty*tauy)))/(-1+Ty*tauy);
+    spp=(-sp0+exp(tt*(Tl-1/taul))*(sp0+spi*(-1+Tl*taul)))/(-1+Tl*taul);
+    sss=spp*RCIR*(ap*En/(2*pi*hh*((Vrf/1000)^2-U0^2)^0.5))^0.5;
+      
+    diff1=abs(exx-exi)/exi;
+    diff2=abs(eyy-eyi)/eyi;
+    diff3=abs(spp-spi)/spi;
+    diff4=abs(sss-ssi)/ssi;
+      
+    exi=exx;
+    eyi=eyy;
+    spi=spp;
+    ssi=sss;
+    time=i*tt;
+    fill,table=ibsiteration;
+    i=i+1;        
+!}
+!! To see if the script runs correctly check if you have this file as output with all the itearation steps. 
+write,table=ibsiteration,file="ibsiteration_2GHz.tfs";
+
+    et=spp*sss*En*1e6;
+    et0=sp0*ss0*En*1e6;
+    exn=exx*gg*1e9;
+    eyn=eyy*gg*1e9;
+    ex0n=ex0*gg*1e9;
+    ey0n=ey0*gg*1e9;
+    
+    IBSx=exn/ex0n;
+    IBSy=eyn/ey0n;
+    IBSl=et/et0;
+    
+    fill,table=ibssteadystate;
+
+    !! This output file should have the steady state emittances 
+    write,table=ibssteadystate,file="ibssteadystate_2GHz_trap.tfs";
+    
+    show, i, ex0n, ey0n, sp0, ss0,et0, exn, eyn, spp, sss, et, IBSx, IBSy, IBSl, dq1, dq2,alfa, u0,harmon,taux, tauy,taul;
+!stop;
+value, kqf1,kqf2;
+
+FILL, TABLE=TAB;
+WRITE, TABLE=TAB,file=final_trap_2GHz.tfs;
+
+!exec ins($m,m);
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!VRF:=(U0+0.9e-3)*1000;
+
+!m=m+1;
+!};
+
+
+stop;
+
+
+/***
+
+
